@@ -4,13 +4,14 @@
 pip3 install virtualenv
 virtualenv venv
 
-<!-- 之後每次開檔案都要 -->
 # 喚醒虛擬環境
+<!-- Mac -->
+source venv/bin/activate
 <!-- Windows cmd -->
 .\.venv\Scripts\Activate.ps1 
 # 執行程式
-<!-- Windows cmd -->
-python .\server.py
+<!-- Mac/Windows -->
+python server.py
 
 # optional:一件安裝需要的套件，後續更新也用它
 <!-- Mac/Linux -->
