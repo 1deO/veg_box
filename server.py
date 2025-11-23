@@ -28,5 +28,6 @@ def index():               # 發出請求後會執行index()函式
     return render_template('home.html')   # 會使用樣板引擎回傳(home.html)網頁的內容
 
 if __name__ == '__main__':    # 當執行__name__時，app開始執行
-
+    with app.app_context():
+        db.create_all()   # 建立所有資料表
     app.run(debug=True)
