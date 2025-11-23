@@ -29,5 +29,5 @@ def index():               # 發出請求後會執行index()函式
 
 if __name__ == '__main__':    # 當執行__name__時，app開始執行
     with app.app_context():
-        db.create_all()   # 建立所有資料表
+        db.create_all()   
     app.run(debug=True)
