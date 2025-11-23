@@ -29,4 +29,4 @@ def index():               # 發出請求後會執行index()函式
 
 if __name__ == '__main__':    # 當執行__name__時，app開始執行
 
-    app.run(debug=True)s
+    app.run(debug=True)
