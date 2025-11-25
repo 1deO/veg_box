@@ -69,12 +69,13 @@ class Customer(db.Model):
 
     CustomerID = db.Column(db.Integer, primary_key=True)
     CustomerName = db.Column(db.String(50), nullable=False)
+    Gender = db.Column(db.String(1))           # M / F
+    Age = db.Column(db.Integer)
+    TotalSpent = db.Column(db.Float, default=0)
+    LastPurchaseDate = db.Column(db.String(20))
+    PurchaseCount = db.Column(db.Integer, default=0)
 
-    orders = db.relationship(
-        "Order",
-        back_populates="customer",
-        lazy="select"
-    )
+    orders = db.relationship("Order", back_populates="customer", lazy="select")
 
     def __repr__(self):
         return f"<Customer {self.CustomerID} - {self.CustomerName}>"
