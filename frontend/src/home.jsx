@@ -28,117 +28,67 @@ const LadybugFarmSystem = () => {
     '花椰菜': { type: 'fruit', season: [9,10,11,12,1], shelfLife: 7, growthDays: 80, unit: '顆' },
   };
 
-  const [inventory, setInventory] = useState([
-    { id: 1, name: '高麗菜', gradeA: 45, gradeB: 23, gradeC: 8, unit: '顆', date: '2025-11-25', daysStored: 2 },
-    { id: 2, name: '青江菜', gradeA: 120, gradeB: 45, gradeC: 15, unit: '把', date: '2025-11-25', daysStored: 0 },
-    { id: 3, name: '小白菜', gradeA: 89, gradeB: 34, gradeC: 12, unit: '把', date: '2025-11-25', daysStored: 1 },
-    { id: 4, name: '番茄', gradeA: 67, gradeB: 28, gradeC: 9, unit: '斤', date: '2025-11-24', daysStored: 1 },
-    { id: 5, name: '茄子', gradeA: 34, gradeB: 18, gradeC: 7, unit: '條', date: '2025-11-24', daysStored: 1 },
-    { id: 6, name: '菠菜', gradeA: 56, gradeB: 22, gradeC: 8, unit: '把', date: '2025-11-25', daysStored: 0 },
-    { id: 7, name: '花椰菜', gradeA: 28, gradeB: 12, gradeC: 4, unit: '顆', date: '2025-11-23', daysStored: 2 },
-    { id: 8, name: '小黃瓜', gradeA: 78, gradeB: 32, gradeC: 10, unit: '條', date: '2025-11-25', daysStored: 0 },
-  ]);
+  const [inventory, setInventory] = useState([]);
 
-  const [orders, setOrders] = useState([
-    { id: 'ORD001', customer: '王小明', box: '大份蔬菜箱 $450', status: '配送中', date: '2025-11-25', items: ['高麗菜x1', '青江菜x2', '小白菜x2', '番茄x1', '茄子x1'] },
-    { id: 'ORD002', customer: '李小華', box: '大份蔬菜箱 $480', status: '分配完成', date: '2025-11-25', items: ['高麗菜x2', '青江菜x1', '小白菜x1', '番茄x2', '茄子x1'] },
-    { id: 'ORD003', customer: '張大同', box: '小份蔬菜箱 $320', status: '揀貨中', date: '2025-11-25', items: ['青江菜x2', '小白菜x2', '番茄x1'] },
-    { id: 'ORD004', customer: '陳美玲', box: '小份蔬菜箱 $300', status: '訂單成立', date: '2025-11-25', items: [] },
-  ]);
+  const [orders, setOrders] = useState([]);
 
-  const [customers, setCustomers] = useState([
-    { 
-      id: 1, 
-      name: '王小明', 
-      email: 'wang@email.com', 
-      orders: 24, 
-      totalSpent: 10800, 
-      lastOrder: '2025-11-25',
-      recency: 0,
-      frequency: 24,
-      monetary: 10800,
-      rfmScore: '333',
-      segment: '頂級忠誠客戶'
-    },
-    { 
-      id: 2, 
-      name: '李小華', 
-      email: 'li@email.com', 
-      orders: 12, 
-      totalSpent: 5400, 
-      lastOrder: '2025-11-20',
-      recency: 5,
-      frequency: 12,
-      monetary: 5400,
-      rfmScore: '322',
-      segment: '忠誠客戶'
-    },
-    { 
-      id: 3, 
-      name: '張大同', 
-      email: 'zhang@email.com', 
-      orders: 18, 
-      totalSpent: 7560, 
-      lastOrder: '2025-11-25',
-      recency: 0,
-      frequency: 18,
-      monetary: 7560,
-      rfmScore: '332',
-      segment: '忠誠客戶'
-    },
-    { 
-      id: 4, 
-      name: '陳美玲', 
-      email: 'chen@email.com', 
-      orders: 3, 
-      totalSpent: 1350, 
-      lastOrder: '2025-10-15',
-      recency: 41,
-      frequency: 3,
-      monetary: 1350,
-      rfmScore: '111',
-      segment: '潛在的忠誠客戶'
-    },
-    { 
-      id: 5, 
-      name: '林志豪', 
-      email: 'lin@email.com', 
-      orders: 8, 
-      totalSpent: 3200, 
-      lastOrder: '2025-11-10',
-      recency: 15,
-      frequency: 8,
-      monetary: 3200,
-      rfmScore: '221',
-      segment: '潛在的忠誠客戶'
-    },
-    { 
-      id: 6, 
-      name: '劉小美', 
-      email: 'liu@email.com', 
-      orders: 15, 
-      totalSpent: 4500, 
-      lastOrder: '2025-11-22',
-      recency: 3,
-      frequency: 15,
-      monetary: 4500,
-      rfmScore: '323',
-      segment: '忠誠客戶'
-    },
-    { 
-      id: 7, 
-      name: '黃大明', 
-      email: 'huang@email.com', 
-      orders: 6, 
-      totalSpent: 8100, 
-      lastOrder: '2025-11-24',
-      recency: 1,
-      frequency: 6,
-      monetary: 8100,
-      rfmScore: '313',
-      segment: '有錢途潛力的客戶'
-    },
-  ]);
+  const [customers, setCustomers] = useState([]);
+
+  useEffect(() => {
+    // 讀取庫存採收資料（HarvestRecord）
+    fetch("/api/harvest_records")
+      .then(res => res.json())
+      .then(data => {
+        // 轉換格式：React 目前 UI 用的是 name / gradeA / gradeB / date / unit
+        const converted = data.map(r => ({
+          id: r.HarvestID,
+          name: r.Produce.ProduceName,
+          gradeA: r.gradeA,
+          gradeB: r.gradeB,
+          gradeC: r.gradeC,
+          unit: r.Produce.unit,
+          date: r.HarvestDate,
+          daysStored: r.daysStored
+        }));
+        setInventory(converted);
+      });
+  
+    // 讀取訂單
+    fetch("/api/orders")
+      .then(res => res.json())
+      .then(data => {
+        const converted = data.map(o => ({
+          id: "ORD" + o.OrderID.toString().padStart(3, "0"),
+          customer: o.Customer.CustomerName,
+          box: `${o.TotalAmount}份蔬菜箱 $${o.TotalPrice}`,
+          status: o.DeliveryStatus?.Status || "未知",
+          date: o.OrderDate,
+          items: o.OrderItems.map(i => `${i.Produce.ProduceName} x${i.Quantity}`)
+        }));
+        setOrders(converted);
+      });
+  
+    // 讀取客戶
+    fetch("/api/customers")
+      .then(res => res.json())
+      .then(data => {
+        const converted = data.map(c => ({
+          id: c.CustomerID,
+          name: c.CustomerName,
+          email: c.CustomerName + "@email.com",
+          orders: c.PurchaseCount,
+          totalSpent: c.TotalSpent,
+          lastOrder: c.LastPurchaseDate || "",
+          recency: 0,        
+          frequency: c.PurchaseCount,
+          monetary: c.TotalSpent,
+          rfmScore: "222",    // 暫時給預設
+          segment: "一般客戶"
+        }));
+        setCustomers(converted);
+      });
+
+  }, []);  
 
   const [showAddHarvest, setShowAddHarvest] = useState(false);
   const [newHarvest, setNewHarvest] = useState({ name: '', gradeA: 0, gradeB: 0, gradeC: 0, unit: '把' });
