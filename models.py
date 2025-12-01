@@ -7,8 +7,13 @@ class ProduceItem(db.Model):
     __tablename__ = "ProduceItem"
 
     ProduceID = db.Column(db.Integer, primary_key=True)
-    ProduceName = db.Column(db.String(50), nullable=False)
-    Unit = db.Column(db.String(20), nullable=False)
+    ProduceName = db.Column(db.String(50), unique=True, nullable=False)
+
+    type = db.Column(db.String(20))
+    season = db.Column(db.ARRAY(db.Integer))
+    shelfLife = db.Column("shelflife", db.Integer)
+    growthDays = db.Column("growthdays", db.Integer)
+    unit = db.Column(db.String(20))
 
     harvest_records = db.relationship(
         "HarvestRecord",
@@ -16,8 +21,16 @@ class ProduceItem(db.Model):
         lazy="select"
     )
 
-    def __repr__(self):
-        return f"<ProduceItem {self.ProduceID} - {self.ProduceName}>"
+    def to_dict(self):
+        return {
+            "ProduceID": self.ProduceID,
+            "ProduceName": self.ProduceName,
+            "type": self.type,
+            "season": self.season,
+            "shelfLife": self.shelfLife,
+            "growthDays": self.growthDays,
+            "unit": self.unit,
+        }
 
 
 # HarvestRecord（採收紀錄）
@@ -26,24 +39,36 @@ class HarvestRecord(db.Model):
 
     HarvestID = db.Column(db.Integer, primary_key=True)
     ProduceID = db.Column(db.Integer, db.ForeignKey("ProduceItem.ProduceID"), nullable=False)
-    HarvestDate = db.Column(db.String(20), nullable=False)
-    HarvestQty = db.Column(db.Float, nullable=False)
-    HarvestWeight = db.Column(db.Float, nullable=False)
+
+    gradeA = db.Column("gradea", db.Integer)
+    gradeB = db.Column("gradeb", db.Integer)
+    gradeC = db.Column("gradec", db.Integer)
+    HarvestDate = db.Column("harvestdate", db.Date)
+    daysStored = db.Column("daysstored", db.Integer)
 
     produce = db.relationship(
         "ProduceItem",
         back_populates="harvest_records",
         lazy="joined"
     )
+
     quality_checks = db.relationship(
         "QualityCheck",
         back_populates="harvest_record",
         lazy="select"
     )
 
-    def __repr__(self):
-        return f"<HarvestRecord {self.HarvestID} (Produce {self.ProduceID})>"
-
+    def to_dict(self):
+        return {
+            "HarvestID": self.HarvestID,
+            "ProduceID": self.ProduceID,
+            "gradeA": self.gradeA,
+            "gradeB": self.gradeB,
+            "gradeC": self.gradeC,
+            "HarvestDate": self.HarvestDate.isoformat() if self.HarvestDate else None,
+            "daysStored": self.daysStored,
+            "Produce": self.produce.to_dict(),
+        }
 
 # QualityCheck（品質檢查）
 class QualityCheck(db.Model):
@@ -51,7 +76,7 @@ class QualityCheck(db.Model):
 
     QualityID = db.Column(db.Integer, primary_key=True)
     HarvestID = db.Column(db.Integer, db.ForeignKey("HarvestRecord.HarvestID"), nullable=False)
-    Grade = db.Column(db.String(5), nullable=False)   # A / B / C
+    Grade = db.Column(db.String(5), nullable=False)
     Note = db.Column(db.String(200))
 
     harvest_record = db.relationship(
@@ -60,8 +85,13 @@ class QualityCheck(db.Model):
         lazy="joined"
     )
 
-    def __repr__(self):
-        return f"<QualityCheck {self.QualityID} - Grade {self.Grade}>"
+    def to_dict(self):
+        return {
+            "QualityID": self.QualityID,
+            "HarvestID": self.HarvestID,
+            "Grade": self.Grade,
+            "Note": self.Note,
+        }
 
 # Customer（顧客）
 class Customer(db.Model):
@@ -69,7 +99,7 @@ class Customer(db.Model):
 
     CustomerID = db.Column(db.Integer, primary_key=True)
     CustomerName = db.Column(db.String(50), nullable=False)
-    Gender = db.Column(db.String(1))           # M / F
+    Gender = db.Column(db.String(1))
     Age = db.Column(db.Integer)
     TotalSpent = db.Column(db.Float, default=0)
     LastPurchaseDate = db.Column(db.String(20))
@@ -77,8 +107,16 @@ class Customer(db.Model):
 
     orders = db.relationship("Order", back_populates="customer", lazy="select")
 
-    def __repr__(self):
-        return f"<Customer {self.CustomerID} - {self.CustomerName}>"
+    def to_dict(self):
+        return {
+            "CustomerID": self.CustomerID,
+            "CustomerName": self.CustomerName,
+            "Gender": self.Gender,
+            "Age": self.Age,
+            "TotalSpent": self.TotalSpent,
+            "LastPurchaseDate": self.LastPurchaseDate,
+            "PurchaseCount": self.PurchaseCount,
+        }
 
 
 # Order（訂單）
@@ -87,33 +125,31 @@ class Order(db.Model):
 
     OrderID = db.Column(db.Integer, primary_key=True)
     CustomerID = db.Column(db.Integer, db.ForeignKey("Customer.CustomerID"), nullable=False)
+
     OrderDate = db.Column(db.String(20), nullable=False)
     TotalAmount = db.Column(db.Float, nullable=False)
     TotalPrice = db.Column(db.Float, nullable=False)
+    BoxPrice = db.Column(db.Integer)
 
-    customer = db.relationship(
-        "Customer",
-        back_populates="orders",
-        lazy="joined"
-    )
-    order_items = db.relationship(
-        "OrderItem",
-        back_populates="order",
-        lazy="select"
-    )
-    delivery_status = db.relationship(
-        "DeliveryStatus",
-        back_populates="order",
-        lazy="select",
-        uselist=False
-    )
+    customer = db.relationship("Customer", back_populates="orders", lazy="joined")
+    order_items = db.relationship("OrderItem", back_populates="order", lazy="select")
+    delivery_status = db.relationship("DeliveryStatus", back_populates="order", lazy="select", uselist=False)
 
-    def __repr__(self):
-        return f"<Order {self.OrderID} - Customer {self.CustomerID}>"
+    def to_dict(self):
+        return {
+            "OrderID": self.OrderID,
+            "CustomerID": self.CustomerID,
+            "OrderDate": self.OrderDate,
+            "TotalAmount": self.TotalAmount,
+            "TotalPrice": self.TotalPrice,
+            "BoxPrice": self.BoxPrice,
+            "Customer": self.customer.to_dict(),
+            "DeliveryStatus": self.delivery_status.to_dict() if self.delivery_status else None,
+            "OrderItems": [item.to_dict() for item in self.order_items],
+        }
 
 
-
-# OrderItem（訂單蔬果明細）
+# OrderItem（訂單明細）
 class OrderItem(db.Model):
     __tablename__ = "OrderItem"
 
@@ -126,9 +162,14 @@ class OrderItem(db.Model):
     order = db.relationship("Order", back_populates="order_items", lazy="joined")
     produce = db.relationship("ProduceItem", lazy="joined")
 
-    def __repr__(self):
-        return f"<OrderItem Order={self.OrderID}, Produce={self.ProduceID}, Qty={self.Quantity}>"
-
+    def to_dict(self):
+        return {
+            "OrderID": self.OrderID,
+            "ProduceID": self.ProduceID,
+            "Quantity": self.Quantity,
+            "Price": self.Price,
+            "Produce": self.produce.to_dict(),
+        }
 
 
 # DeliveryStatus（配送狀態）
@@ -143,5 +184,10 @@ class DeliveryStatus(db.Model):
 
     order = db.relationship("Order", back_populates="delivery_status", lazy="joined")
 
-    def __repr__(self):
-        return f"<DeliveryStatus {self.StatusID} - Order {self.OrderID} ({self.Status})>"
+    def to_dict(self):
+        return {
+            "StatusID": self.StatusID,
+            "OrderID": self.OrderID,
+            "Status": self.Status,
+            "UpdateTime": self.UpdateTime,
+        }
