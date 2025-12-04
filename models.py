@@ -15,6 +15,23 @@ class ProduceItem(db.Model):
     growthDays = db.Column("growthdays", db.Integer)
     unit = db.Column(db.String(20))
 
+    price = db.Column(db.Float)   # 售價 p
+    cost = db.Column(db.Float)    # 成本 c
+    residualValue = db.Column("residualvalue",db.Float)  # 殘值 v
+    serviceLevel = db.Column("servicelevel", db.Float) # 服務水準
+
+    @property
+    def service_level(self):
+        Cs = self.price - self.cost
+        Ce = self.cost - self.residualvalue
+
+        if Cs + Ce == 0:
+            return None  # 避免除零
+
+        SL = Cs / (Cs + Ce)
+        return round(SL, 3)  # 例如 0.732
+
+
     harvest_records = db.relationship(
         "HarvestRecord",
         back_populates="produce",
@@ -30,6 +47,11 @@ class ProduceItem(db.Model):
             "shelfLife": self.shelfLife,
             "growthDays": self.growthDays,
             "unit": self.unit,
+            "unit": self.unit,
+            "price": self.price,
+            "cost": self.cost,
+            "residualValue": self.residualValue,
+            "serviceLevel": self.serviceLevel,
         }
 
 
