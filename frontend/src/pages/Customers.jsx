@@ -123,6 +123,44 @@ const CustomersPage = ({ customers }) => {
 
   const totalRevenue = customersWithRFM.reduce((sum, c) => sum + c.totalSpent, 0);
 
+  // 計算關鍵指標
+  const calculateMetrics = () => {
+    // 假設當前月份與上個月份的分界（實際應用中需要真實日期資料）
+    const currentMonthCustomers = customersWithRFM.filter(c => c.recency <= 30);
+    const lastMonthCustomers = customersWithRFM.filter(c => c.recency > 30 && c.recency <= 60);
+    
+    // 銷售成長率 (以最近30天 vs 前30天的客戶消費比較)
+    const currentMonthRevenue = currentMonthCustomers.reduce((sum, c) => sum + c.totalSpent, 0);
+    const lastMonthRevenue = lastMonthCustomers.reduce((sum, c) => sum + c.totalSpent, 0);
+    const salesGrowthRate = lastMonthRevenue > 0 
+      ? ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue * 100)
+      : 0;
+    
+    // 顧客獲取率 (新客戶比例 - 假設距今60天內且訂單數<=2為新客戶)
+    const newCustomers = customersWithRFM.filter(c => c.recency <= 60 && c.orders <= 2);
+    const customerAcquisitionRate = (newCustomers.length / customersWithRFM.length * 100);
+    
+    // 平均顧客購買間隔 (總距今天數 / 總訂單數)
+    const avgPurchaseInterval = customersWithRFM.reduce((sum, c) => {
+      return sum + (c.recency / c.orders);
+    }, 0) / customersWithRFM.length;
+    
+    // 顧客留存率 (最近30天內有購買的客戶 / 總客戶)
+    const activeCustomers = customersWithRFM.filter(c => c.recency <= 30);
+    const customerRetentionRate = (activeCustomers.length / customersWithRFM.length * 100);
+    
+    return {
+      salesGrowthRate,
+      customerAcquisitionRate,
+      avgPurchaseInterval,
+      customerRetentionRate,
+      newCustomersCount: newCustomers.length,
+      activeCustomersCount: activeCustomers.length
+    };
+  };
+
+  const metrics = calculateMetrics();
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -135,35 +173,71 @@ const CustomersPage = ({ customers }) => {
         </div>
       </div>
 
+      {/* 關鍵指標卡片 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl p-5 shadow-md border-l-4 border-blue-500">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm text-gray-600 mb-1">銷售成長率</p>
+              <p className="text-2xl font-bold text-gray-800">
+                {metrics.salesGrowthRate >= 0 ? '+' : ''}{metrics.salesGrowthRate.toFixed(1)}%
+              </p>
+              <p className="text-xs text-gray-500 mt-1">近30天 vs 前30天</p>
+            </div>
+            <div className={`text-2xl ${metrics.salesGrowthRate >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+              {metrics.salesGrowthRate >= 0 ? '↗' : '↘'}
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-5 shadow-md border-l-4 border-green-500">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm text-gray-600 mb-1">顧客獲取率</p>
+              <p className="text-2xl font-bold text-gray-800">{metrics.customerAcquisitionRate.toFixed(1)}%</p>
+              <p className="text-xs text-gray-500 mt-1">新客戶: {metrics.newCustomersCount} 位</p>
+            </div>
+            <div className="text-2xl text-green-500">👥</div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-5 shadow-md border-l-4 border-purple-500">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm text-gray-600 mb-1">平均購買間隔</p>
+              <p className="text-2xl font-bold text-gray-800">{metrics.avgPurchaseInterval.toFixed(0)} 天</p>
+              <p className="text-xs text-gray-500 mt-1">每次購買的平均間隔</p>
+            </div>
+            <div className="text-2xl text-purple-500">📅</div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-5 shadow-md border-l-4 border-orange-500">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm text-gray-600 mb-1">顧客留存率</p>
+              <p className="text-2xl font-bold text-gray-800">{metrics.customerRetentionRate.toFixed(1)}%</p>
+              <p className="text-xs text-gray-500 mt-1">活躍客戶: {metrics.activeCustomersCount} 位</p>
+            </div>
+            <div className="text-2xl text-orange-500">🎯</div>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-6 border border-purple-200">
         <h3 className="text-lg font-semibold text-gray-800 mb-3">📊 RFM 分析說明 (三等分法)</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
           <div>
             <span className="font-semibold text-purple-700">R (Recency):</span>
             <span className="text-gray-600 ml-2">最近一次購買距今天數</span>
-            <div className="mt-1 text-xs text-gray-500">
-              • 3分: 活躍客 (前1/3名,距今最近)
-              <br />• 2分: 一般客 (中間1/3)
-              <br />• 1分: 沉睡客 (後1/3名,最久未購買)
-            </div>
           </div>
           <div>
             <span className="font-semibold text-blue-700">F (Frequency):</span>
             <span className="text-gray-600 ml-2">購買次數</span>
-            <div className="mt-1 text-xs text-gray-500">
-              • 3分: 常客 (前1/3名,購買最頻繁)
-              <br />• 2分: 中等客 (中間1/3)
-              <br />• 1分: 稀客 (後1/3名,購買最少)
-            </div>
           </div>
           <div>
             <span className="font-semibold text-green-700">M (Monetary):</span>
             <span className="text-gray-600 ml-2">累計消費金額</span>
-            <div className="mt-1 text-xs text-gray-500">
-              • 3分: 黃金客 (前1/3名,消費最高)
-              <br />• 2分: 中消費客 (中間1/3)
-              <br />• 1分: 一般客 (後1/3名,消費最低)
-            </div>
           </div>
         </div>
       </div>
@@ -206,9 +280,9 @@ const CustomersPage = ({ customers }) => {
       </div>
 
       <div className="bg-white rounded-xl shadow-md overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-96 overflow-y-auto relative">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 sticky top-0 z-10">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">客戶姓名</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
