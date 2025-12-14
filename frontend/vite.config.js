@@ -14,6 +14,7 @@ export default defineConfig({
     outDir: '../static/dist',
     emptyOutDir: true,
     assetsDir: 'assets',
+    chunkSizeWarningLimit: 1000, // Increase warning limit to 1MB
     rollupOptions: {
       output: {
         entryFileNames: 'assets/index.js',
