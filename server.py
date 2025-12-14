@@ -9,11 +9,10 @@ CORS(app)  # React 前端跨域
 
 # 資料庫設定
 if "DATABASE_URL" in os.environ:
-    # Render 的連線字串需要轉換
-    database_url = os.environ["DATABASE_URL"].replace("postgres://", "postgresql://")
-    app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql://admin:oN3Y92p1xMZNULFb53J4TcqDlBaSZ70K@dpg-d4hfhtf5r7bs73bqt67g-a.singapore-postgres.render.com/veg_box_db"
+    app.config["SQLALCHEMY_DATABASE_URI"] = os.environ["DATABASE_URL"].replace(
+        "postgres://", "postgresql://"
+    )
 else:
-    # 本地開發使用 SQLite
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///local.db"
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
