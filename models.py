@@ -30,7 +30,18 @@ class ProduceItem(db.Model):
 
         SL = Cs / (Cs + Ce)
         return round(SL, 3)  # 例如 0.732
+    
+    @property
+    def quality_threshold(self):
+        if self.service_level is None:
+            return 0.7  # 預設
 
+        if self.service_level >= 0.7:
+            return 0.5   # 高價值 → 放到 50% 就算不佳
+        elif self.service_level >= 0.5:
+            return 0.7
+        else:
+            return 0.85  # 低價值 → 可放更久
 
     harvest_records = db.relationship(
         "HarvestRecord",
@@ -79,7 +90,7 @@ class HarvestRecord(db.Model):
         back_populates="harvest_record",
         lazy="select"
     )
-
+    
     def to_dict(self):
         return {
             "HarvestID": self.HarvestID,
@@ -89,8 +100,8 @@ class HarvestRecord(db.Model):
             "gradeC": self.gradeC,
             "HarvestDate": self.HarvestDate.isoformat() if self.HarvestDate else None,
             "daysStored": self.daysStored,
-            "Produce": self.produce.to_dict(),
-        }
+            "Produce": self.produce.to_dict(),  # 這裡已經有 serviceLevel
+    }
 
 # QualityCheck（品質檢查）
 class QualityCheck(db.Model):
