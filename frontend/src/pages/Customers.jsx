@@ -225,7 +225,7 @@ const CustomersPage = ({ customers }) => {
       </div>
 
       <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-6 border border-purple-200">
-        <h3 className="text-lg font-semibold text-gray-800 mb-3">📊 RFM 分析說明 (三等分法)</h3>
+        <h3 className="text-lg font-semibold text-gray-800 mb-3">RFM 分析說明 (三等分法)</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
           <div>
             <span className="font-semibold text-purple-700">R (Recency):</span>
