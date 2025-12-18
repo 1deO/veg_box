@@ -24,3 +24,11 @@ pip install -r requirements.txt
 1. Develop inside the Vite project (frontend/). Edit src/home.jsx (or any component files there); that’s the source before bundling.
 2. Run "npm run dev" from frontend/. Vite serves the app at http://localhost:5173 with hot reloads, React DevTools support, readable stack traces, etc. You can iterate quickly there without involving Flask.
 3. When you’re happy with the changes, run npm run build. That regenerates static/dist/assets/index.js (and index.css) for Flask. Refreshing /home in your Flask app will now show the updated UI.
+
+# connect database
+<!-- Mac/Linux -->
+export DATABASE_URL="postgresql://admin:oN3Y92p1xMZNULFb53J4TcqDlBaSZ70K@dpg-d4hfhtf5r7bs73bqt67g-a.singapore-postgres.render.com/veg_box_db"
+<!-- Windows cmd -->
+$env:DATABASE_URL = "postgresql://admin:oN3Y92p1xMZNULFb53J4TcqDlBaSZ70K@dpg-d4hfhtf5r7bs73bqt67g-a.singapore-postgres.render.com/veg_box_db"
+
+python server.py

@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Search } from 'lucide-react';
 
-const CustomersPage = ({ customers }) => {
+const CustomersPage = ({ customers, orders = [] }) => {
 
   const [customerFilter, setCustomerFilter] = useState({ segment: 'all', sort: 'totalSpent' });
 
@@ -125,29 +125,91 @@ const CustomersPage = ({ customers }) => {
 
   // 計算關鍵指標
   const calculateMetrics = () => {
-    // 假設當前月份與上個月份的分界（實際應用中需要真實日期資料）
-    const currentMonthCustomers = customersWithRFM.filter(c => c.recency <= 30);
-    const lastMonthCustomers = customersWithRFM.filter(c => c.recency > 30 && c.recency <= 60);
-    
-    // 銷售成長率 (以最近30天 vs 前30天的客戶消費比較)
-    const currentMonthRevenue = currentMonthCustomers.reduce((sum, c) => sum + c.totalSpent, 0);
-    const lastMonthRevenue = lastMonthCustomers.reduce((sum, c) => sum + c.totalSpent, 0);
-    const salesGrowthRate = lastMonthRevenue > 0 
-      ? ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue * 100)
-      : 0;
-    
-    // 顧客獲取率 (新客戶比例 - 假設距今60天內且訂單數<=2為新客戶)
-    const newCustomers = customersWithRFM.filter(c => c.recency <= 60 && c.orders <= 2);
-    const customerAcquisitionRate = (newCustomers.length / customersWithRFM.length * 100);
-    
-    // 平均顧客購買間隔 (總距今天數 / 總訂單數)
-    const avgPurchaseInterval = customersWithRFM.reduce((sum, c) => {
-      return sum + (c.recency / c.orders);
-    }, 0) / customersWithRFM.length;
-    
-    // 顧客留存率 (最近30天內有購買的客戶 / 總客戶)
-    const activeCustomers = customersWithRFM.filter(c => c.recency <= 30);
-    const customerRetentionRate = (activeCustomers.length / customersWithRFM.length * 100);
+    const totalCustomers = customersWithRFM.length || 1;
+
+    const parseDate = (value) => {
+      if (!value) return null;
+      if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+      if (typeof value === 'number') {
+        const d = new Date(value);
+        return Number.isNaN(d.getTime()) ? null : d;
+      }
+      const s = String(value).trim();
+      if (!s) return null;
+
+      // 常見格式修正：YYYY-MM-DD / YYYY/MM/DD / YYYY-MM-DD HH:mm:ss
+      const m1 = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
+      if (m1) {
+        const [, yy, mm, dd, hh = '0', mi = '0', ss = '0'] = m1;
+        const d = new Date(
+          Number(yy),
+          Number(mm) - 1,
+          Number(dd),
+          Number(hh),
+          Number(mi),
+          Number(ss)
+        );
+        return Number.isNaN(d.getTime()) ? null : d;
+      }
+
+      const d = new Date(s);
+      return Number.isNaN(d.getTime()) ? null : d;
+    };
+
+    const now = new Date();
+    const msPerDay = 1000 * 60 * 60 * 24;
+
+    // 每期 180 天：近 180 天 vs 前 180 天
+    const periodDays = 180;
+    const currentStart = new Date(now.getTime() - periodDays * msPerDay);
+    const prevStart = new Date(now.getTime() - periodDays * 2 * msPerDay);
+
+    const getOrderRevenue = (o) => {
+      // 以 home.jsx 轉出的 totalPrice 為主（數字），避免解析字串導致 0
+      if (typeof o?.totalPrice === 'number') return o.totalPrice;
+      // 後端原始欄位 fallback
+      if (typeof o?.TotalPrice === 'number') return o.TotalPrice;
+      return 0;
+    };
+
+    const currentPeriodRevenue = (orders || []).reduce((sum, o) => {
+      const d = parseDate(o.date ?? o.OrderDate);
+      if (!d) return sum;
+      if (d >= currentStart && d <= now) return sum + getOrderRevenue(o);
+      return sum;
+    }, 0);
+
+    const prevPeriodRevenue = (orders || []).reduce((sum, o) => {
+      const d = parseDate(o.date ?? o.OrderDate);
+      if (!d) return sum;
+      if (d >= prevStart && d < currentStart) return sum + getOrderRevenue(o);
+      return sum;
+    }, 0);
+
+    // 若前期為 0：
+    // - 本期也為 0：視為「沒有資料」，先顯示 0
+    // - 本期 > 0：視為從 0 成長到有營收，顯示 100%（避免永遠顯示 0.0%）
+    const salesGrowthRate =
+      prevPeriodRevenue > 0
+        ? ((currentPeriodRevenue - prevPeriodRevenue) / prevPeriodRevenue) * 100
+        : currentPeriodRevenue > 0
+        ? 100
+        : 0;
+
+    // 顧客獲取率：用真實客戶資料（最近 180 天有購買，且購買次數 <= 2 視為新客）
+    const newCustomers = customersWithRFM.filter((c) => c.recency <= periodDays && (c.orders || 0) <= 2);
+    const customerAcquisitionRate = (newCustomers.length / totalCustomers) * 100;
+
+    // 平均顧客購買間隔：recency / orders (orders=0 視為 0，避免除以 0)
+    const avgPurchaseInterval =
+      customersWithRFM.reduce((sum, c) => {
+        const denom = c.orders || 0;
+        return sum + (denom > 0 ? c.recency / denom : 0);
+      }, 0) / totalCustomers;
+
+    // 顧客留存率：最近 180 天有購買的客戶比例（真實 recency）
+    const activeCustomers = customersWithRFM.filter((c) => c.recency <= periodDays);
+    const customerRetentionRate = (activeCustomers.length / totalCustomers) * 100;
     
     return {
       salesGrowthRate,
@@ -182,7 +244,7 @@ const CustomersPage = ({ customers }) => {
               <p className="text-2xl font-bold text-gray-800">
                 {metrics.salesGrowthRate >= 0 ? '+' : ''}{metrics.salesGrowthRate.toFixed(1)}%
               </p>
-              <p className="text-xs text-gray-500 mt-1">近30天 vs 前30天</p>
+              <p className="text-xs text-gray-500 mt-1">近180天 vs 前180天</p>
             </div>
             <div className={`text-2xl ${metrics.salesGrowthRate >= 0 ? 'text-green-500' : 'text-red-500'}`}>
               {metrics.salesGrowthRate >= 0 ? '↗' : '↘'}

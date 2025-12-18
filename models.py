@@ -23,7 +23,8 @@ class ProduceItem(db.Model):
     @property
     def service_level(self):
         Cs = self.price - self.cost
-        Ce = self.cost - self.residualvalue
+        # residualValue 映射到資料庫欄位 residualvalue
+        Ce = self.cost - self.residualValue
 
         if Cs + Ce == 0:
             return None  # 避免除零
@@ -58,11 +59,13 @@ class ProduceItem(db.Model):
             "shelfLife": self.shelfLife,
             "growthDays": self.growthDays,
             "unit": self.unit,
-            "unit": self.unit,
             "price": self.price,
             "cost": self.cost,
             "residualValue": self.residualValue,
+            # 同時回傳資料庫欄位與計算後的指標（前端可直接用）
             "serviceLevel": self.serviceLevel,
+            "computedServiceLevel": self.service_level,
+            "qualityThreshold": self.quality_threshold,
         }
 
 
@@ -101,7 +104,7 @@ class HarvestRecord(db.Model):
             "HarvestDate": self.HarvestDate.isoformat() if self.HarvestDate else None,
             "daysStored": self.daysStored,
             "Produce": self.produce.to_dict(),  # 這裡已經有 serviceLevel
-    }
+        }
 
 # QualityCheck（品質檢查）
 class QualityCheck(db.Model):

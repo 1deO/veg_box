@@ -59,6 +59,12 @@ const LadybugFarmSystem = () => {
   const [customers, setCustomers] = useState([]);
 
   useEffect(() => {
+    const parseDate = (value) => {
+      if (!value) return null;
+      const d = new Date(value);
+      return Number.isNaN(d.getTime()) ? null : d;
+    };
+
     // 讀取庫存採收資料（HarvestRecord）
     fetch("/api/harvest_records")
       .then(res => res.json())
@@ -71,6 +77,10 @@ const LadybugFarmSystem = () => {
           gradeB: r.gradeB,
           gradeC: r.gradeC,
           unit: r.Produce.unit,
+          // 讓前端可以用「資料庫真實值」算品質
+          shelfLife: r.Produce.shelfLife,
+          qualityThreshold: r.Produce.qualityThreshold,
+          computedServiceLevel: r.Produce.computedServiceLevel,
           date: r.HarvestDate,
           daysStored: r.daysStored
         }));
@@ -85,6 +95,9 @@ const LadybugFarmSystem = () => {
           id: "ORD" + o.OrderID.toString().padStart(3, "0"),
           customer: o.Customer.CustomerName,
           box: `${o.TotalAmount}份蔬菜箱 $${o.TotalPrice}`,
+          // 讓前端可用「真實數字」計算營收，不必解析 box 字串
+          totalPrice: Number(o.TotalPrice) || 0,
+          totalAmount: Number(o.TotalAmount) || 0,
           status: o.DeliveryStatus?.Status || "未知",
           date: o.OrderDate,
           items: o.OrderItems.map(i => `${i.Produce.ProduceName} x${i.Quantity}`)
@@ -96,6 +109,9 @@ const LadybugFarmSystem = () => {
     fetch("/api/customers")
       .then(res => res.json())
       .then(data => {
+        const today = new Date();
+        const msPerDay = 1000 * 60 * 60 * 24;
+
         const converted = data.map(c => ({
           id: c.CustomerID,
           name: c.CustomerName,
@@ -103,11 +119,12 @@ const LadybugFarmSystem = () => {
           orders: c.PurchaseCount,
           totalSpent: c.TotalSpent,
           lastOrder: c.LastPurchaseDate || "",
-          recency: 0,        
+          recency: (() => {
+            const d = parseDate(c.LastPurchaseDate);
+            return d ? Math.max(0, Math.floor((today - d) / msPerDay)) : 9999;
+          })(),
           frequency: c.PurchaseCount,
           monetary: c.TotalSpent,
-          rfmScore: "222",    // 暫時給預設
-          segment: "一般客戶"
         }));
         setCustomers(converted);
       });
@@ -309,15 +326,20 @@ const LadybugFarmSystem = () => {
 
   // 計算品質衰退狀況
   const getQualityStatus = (vegName, daysStored) => {
-    const vegInfo = vegetableDatabase[vegName];
-    if (!vegInfo) return { status: 'unknown', color: 'gray', percentage: 100 };
-    
-    const shelfLife = vegInfo.shelfLife;
-    const remaining = ((shelfLife - daysStored) / shelfLife) * 100;
-    
-    if (remaining > 80) return { status: '新鮮', color: 'green', percentage: remaining };
-    if (remaining > 60) return { status: '良好', color: 'yellow', percentage: remaining };
-    if (remaining > 30) return { status: '需盡速出貨', color: 'orange', percentage: remaining };
+    // 優先用「資料庫真實值」：從 inventory 找到對應品項的 shelfLife / qualityThreshold
+    const invItem = inventory.find((i) => i.name === vegName);
+    const shelfLife = invItem?.shelfLife ?? vegetableDatabase[vegName]?.shelfLife;
+    const threshold = invItem?.qualityThreshold ?? 0.7; // models.py 預設 quality_threshold=0.7
+
+    if (!shelfLife || shelfLife <= 0) return { status: 'unknown', color: 'gray', percentage: 100 };
+
+    const remainingRatio = Math.max(0, (shelfLife - daysStored) / shelfLife); // 0..1
+    const remaining = remainingRatio * 100;
+
+    // 依 models.py 的 quality_threshold 判斷「不佳」門檻；其餘區間用一般分級展示
+    if (remainingRatio >= 0.8) return { status: '新鮮', color: 'green', percentage: remaining };
+    if (remainingRatio >= 0.6) return { status: '良好', color: 'yellow', percentage: remaining };
+    if (remainingRatio >= threshold) return { status: '需盡速出貨', color: 'orange', percentage: remaining };
     return { status: '品質不佳', color: 'red', percentage: 0 };
   };
 
@@ -462,7 +484,7 @@ const LadybugFarmSystem = () => {
               getBoxSuggestion={getBoxSuggestion}
             />
           )}
-          {currentPage === 'customers' && <CustomersPage customers={customers} />}
+          {currentPage === 'customers' && <CustomersPage customers={customers} orders={orders} />}
           {currentPage === 'analytics' && (
             <div className="bg-white rounded-xl p-12 shadow-md text-center">
               <BarChart3 className="w-16 h-16 mx-auto text-gray-400 mb-4" />
