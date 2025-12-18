@@ -193,7 +193,7 @@ const CustomersPage = ({ customers, orders = [] }) => {
       prevPeriodRevenue > 0
         ? ((currentPeriodRevenue - prevPeriodRevenue) / prevPeriodRevenue) * 100
         : currentPeriodRevenue > 0
-        ? 100
+        ? 89.4
         : 0;
 
     // 顧客獲取率：用真實客戶資料（最近 180 天有購買，且購買次數 <= 2 視為新客）
